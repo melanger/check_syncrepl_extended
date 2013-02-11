@@ -281,6 +281,13 @@ if options.nagios:
 else:
 	noerror=True
 	for srv in servers:
+		if not options.nocheckcontextcsn:
+			if srv==options.provider:
+				continue
+			if LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
+				logging.warning('ContextCSN of %s not the same of provider' % srv)
+				noerror=False
+
 		if len(not_found[srv])>0:
 			logging.warning('Not found objects on %s :\n  - %s' % (srv,'\n  - '.join(not_found[srv])))
 			noerror=False
