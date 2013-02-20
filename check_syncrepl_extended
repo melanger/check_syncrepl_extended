@@ -239,9 +239,10 @@ for obj in LdapObjects[options.provider]:
 					for attr in LdapObjects[options.provider][obj]:
 						if attr not in LdapObjects[srv][obj]:
 							attrs_list.append(attr)
+							logging.debug("Obj %s not synchronized : %s not present on %s" % (obj,','.join(attrs_list),srv))
 						elif LdapObjects[srv][obj][attr]!=LdapObjects[options.provider][obj][attr]:
 							attrs_list.append(attr)
-					logging.debug("Obj %s not synchronized : %s" % (obj,','.join(attrs_list)))
+							logging.debug("Obj %s not synchronized : %s not same value(s)" % (obj,','.join(attrs_list)))
 					not_sync[srv].append("%s (%s)" % (obj,','.join(attrs_list)))
 				else:
 					logging.debug("Obj %s not synchronized : %s <-> %s" % (obj,LdapObjects[options.provider][obj],LdapObjects[srv][obj]))
