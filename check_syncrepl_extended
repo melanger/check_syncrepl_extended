@@ -24,10 +24,13 @@
 #
 
 import ldap
+import ldap.modlist as modlist
 import logging
 import sys
 
 from optparse import OptionParser
+
+TOUCH_VALUE='%%TOUCH%%'
 
 parser = OptionParser(version="%prog version 1.0\n\nDate : Mon, 10 Dec 2012 18:04:24 +0100\nAuthor : Benjamin Renard <brenard@easter-eggs.com>\nSource : http://git.zionetrix.net/check_syncrepl_extended")
 
@@ -111,6 +114,13 @@ parser.add_option(	"--exclude-attributes",
 			help="Don't check this attribut (only in attribute check mode)",
 			default=None)
 
+parser.add_option(	"--touch",
+			dest="touch",
+			action="store",
+			type='string',
+			help="Touch attribute giving in parameter to force resync a this LDAP object from provider. A value '%s' will be add to this attribute and remove after. The user use to connect to the LDAP directory must have write permission on this attribute on each object." % TOUCH_VALUE,
+			default=None)
+
 
 (options, args) = parser.parse_args()
 
@@ -124,6 +134,13 @@ if not options.dn or not options.pwd:
 
 if not options.basedn:
 	print "You must provide base DN of connection to LDAP servers"
+	sys.exit(1)
+
+if options.touch and not options.attrs:
+	logging.info('Force option attrs on touch mode')
+	options.attrs=True
+elif options.touch and options.nagios:
+	logging.error('Touch mode and Nagios mode not compatible')
 	sys.exit(1)
 
 excl_attrs=[]
@@ -190,6 +207,36 @@ class LdapServer(object):
 					ret.append(res_data)
 		return ret
 
+	def update_object(self,dn,old,new):
+		ldif = modlist.modifyModlist(old,new)
+		if ldif == []:
+			return True
+		try:
+			logging.debug('Update object %s : %s' % (dn,ldif))
+			self.con.modify_s(dn,ldif)
+			return True
+		except ldap.LDAPError, e:
+			logging.error('Error updating object %s : %s' % (dn,e))
+		return False
+
+	def get_attr(self,obj,attr):
+		if attr in obj[0][1]:
+			return obj[0][1][attr]
+		return []
+
+	def touch_object(self,dn,attr,orig_value):
+		new_value=list(orig_value)
+		new_value.append(TOUCH_VALUE)
+		try:
+			logging.info('Add value "%s" to attribute %s of object %s' % (TOUCH_VALUE,attr,dn))
+			if self.update_object(dn,{attr: orig_value}, {attr: new_value}):
+				logging.info('Remove value "%s" to attribute %s of object %s' % (TOUCH_VALUE,attr,dn))
+				self.update_object(dn,{attr: new_value}, {attr: orig_value})
+				return True
+		except ldap.LDAPError, e:
+			logging.error('Error touching object %s : %s' % (dn,e))
+		return False
+
 if options.nocheckcert:
 	ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT,ldap.OPT_X_TLS_NEVER)
 
@@ -246,6 +293,7 @@ for obj in LdapObjects[options.provider]:
 		if srv == options.provider:
 			continue
 		if obj in LdapObjects[srv]:
+			touch=False
 			if LdapObjects[options.provider][obj] != LdapObjects[srv][obj]:
 				if options.attrs:
 					attrs_list=[]
@@ -255,17 +303,24 @@ for obj in LdapObjects[options.provider]:
 						if attr not in LdapObjects[srv][obj]:
 							attrs_list.append(attr)
 							logging.debug("Obj %s not synchronized : %s not present on %s" % (obj,','.join(attrs_list),srv))
+							touch=True
 						else:
 							LdapObjects[srv][obj][attr].sort()
 							LdapObjects[options.provider][obj][attr].sort()
 							if LdapObjects[srv][obj][attr]!=LdapObjects[options.provider][obj][attr]:
 								attrs_list.append(attr)
 								logging.debug("Obj %s not synchronized : %s not same value(s)" % (obj,','.join(attrs_list)))
+								touch=True
 					if len(attrs_list)>0:
 						not_sync[srv].append("%s (%s)" % (obj,','.join(attrs_list)))
 				else:
 					logging.debug("Obj %s not synchronized : %s <-> %s" % (obj,LdapObjects[options.provider][obj],LdapObjects[srv][obj]))
 					not_sync[srv].append(obj)
+			if touch and options.touch:
+				orig_value=[]
+				if options.touch in LdapObjects[options.provider][obj]:
+					orig_value=LdapObjects[options.provider][obj][options.touch]
+				LdapServers[options.provider].touch_object(obj,options.touch,orig_value)
 		else:
 			logging.debug('Obj %s : not found on %s' % (obj,srv))
 			not_found[srv].append(obj)
