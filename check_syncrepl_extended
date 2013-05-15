@@ -17,7 +17,7 @@
 # Requirement : 
 # A single couple of DN and password able to connect to both server 
 # and without restriction to retrieve objects from servers.
-#     
+#
 # Author : Benjamin Renard <brenard@easter-eggs.com>
 # Date : Mon, 10 Dec 2012 18:04:24 +0100
 # Source : http://git.zionetrix.net/check_syncrepl_extended
@@ -35,73 +35,73 @@ parser.add_option(	"-p", "--provider",
 			dest="provider",
 			action="store",
 			type='string',
-        		help="LDAP provider URI (example : ldaps://ldapmaster.foo:636)")
+			help="LDAP provider URI (example : ldaps://ldapmaster.foo:636)")
 
 parser.add_option(	"-c", "--consumer",
 			dest="consumer",
 			action="store",
 			type='string',
-        		help="LDAP consumer URI (example : ldaps://ldapslave.foo:636)")
+			help="LDAP consumer URI (example : ldaps://ldapslave.foo:636)")
 
 parser.add_option(	"-D", "--dn",
 			dest="dn",
 			action="store",
 			type='string',
-        		help="LDAP bind DN (example : uid=nagios,ou=sysaccounts,o=example")
+			help="LDAP bind DN (example : uid=nagios,ou=sysaccounts,o=example")
 
 parser.add_option(	"-P", "--pwd",
 			dest="pwd",
 			action="store",
 			type='string',
-        		help="LDAP bind password")
+			help="LDAP bind password")
 
 parser.add_option(	"-b", "--basedn",
 			dest="basedn",
 			action="store",
 			type='string',
-        		help="LDAP base DN (example : o=example)")
+			help="LDAP base DN (example : o=example)")
 
 parser.add_option(	"-f", "--filter",
 			dest="filter",
 			action="store",
 			type='string',
-        		help="LDAP filter (default : (objectClass=*))",
+			help="LDAP filter (default : (objectClass=*))",
 			default='(objectClass=*)')
 
 parser.add_option(	"-d", "--debug",
 			dest="debug",
 			action="store_true",
-        		help="Debug mode",
+			help="Debug mode",
 			default=False)
 
 parser.add_option(	"-n", "--nagios",
 			dest="nagios",
 			action="store_true",
-        		help="Nagios check plugin mode",
+			help="Nagios check plugin mode",
 			default=False)
 
 parser.add_option(	"-q", "--quiet",
 			dest="quiet",
 			action="store_true",
-        		help="Quiet mode",
+			help="Quiet mode",
 			default=False)
 
 parser.add_option(	"--no-check-certificate",
 			dest="nocheckcert",
 			action="store_true",
-        		help="Don't check the server certificate (Default : False)",
+			help="Don't check the server certificate (Default : False)",
 			default=False)
 
 parser.add_option(	"--no-check-contextCSN",
 			dest="nocheckcontextcsn",
 			action="store_true",
-        		help="Don't check servers contextCSN (Default : False)",
+			help="Don't check servers contextCSN (Default : False)",
 			default=False)
 
 parser.add_option(	"-a", "--attributes",
 			dest="attrs",
 			action="store_true",
-        		help="Check attributes values (Default : check only entryCSN)",
+			help="Check attributes values (Default : check only entryCSN)",
 			default=False)
 
 (options, args) = parser.parse_args()
@@ -134,28 +134,28 @@ else:
 
 class LdapServer(object):
 
-        uri = ""
-        dn = ""
-        pwd = ""
+	uri = ""
+	dn = ""
+	pwd = ""
 
-        con = 0
+	con = 0
 
-        def __init__(self,uri,dn,pwd):
-                self.uri = uri
-                self.dn   = dn
-                self.pwd  = pwd
+	def __init__(self,uri,dn,pwd):
+		self.uri = uri
+		self.dn   = dn
+		self.pwd  = pwd
 
-        def connect(self):
-                if self.con == 0:
-                        try:
-                                con = ldap.initialize(self.uri)
-                                con.protocol_version = ldap.VERSION3
-                                if self.dn != '':
-                                        con.simple_bind_s(self.dn,self.pwd)
-                                self.con = con
+	def connect(self):
+		if self.con == 0:
+			try:
+				con = ldap.initialize(self.uri)
+				con.protocol_version = ldap.VERSION3
+				if self.dn != '':
+					con.simple_bind_s(self.dn,self.pwd)
+				self.con = con
 				return True
-                        except ldap.LDAPError, e:
-                                logging.error("LDAP Error : %s" % e)
+			except ldap.LDAPError, e:
+				logging.error("LDAP Error : %s" % e)
 				return
 
 	def getContextCSN(self,basedn):
@@ -165,17 +165,17 @@ class LdapServer(object):
 		else:
 			return False
 
-        def search(self,basedn,filter,attrs):
-                res_id = self.con.search(basedn,ldap.SCOPE_SUBTREE,filter,attrs)
-                ret = []
-                while 1:
-                        res_type, res_data = self.con.result(res_id,0)
-                        if res_data == []:
-                                break
-                        else:
-                                if res_type == ldap.RES_SEARCH_ENTRY:
-                                        ret.append(res_data)
-                return ret
+	def search(self,basedn,filter,attrs):
+		res_id = self.con.search(basedn,ldap.SCOPE_SUBTREE,filter,attrs)
+		ret = []
+		while 1:
+			res_type, res_data = self.con.result(res_id,0)
+			if res_data == []:
+				break
+			else:
+				if res_type == ldap.RES_SEARCH_ENTRY:
+					ret.append(res_data)
+		return ret
 
 if options.nocheckcert:
 	ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT,ldap.OPT_X_TLS_NEVER)
