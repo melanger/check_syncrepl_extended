@@ -104,6 +104,14 @@ parser.add_option(	"-a", "--attributes",
 			help="Check attributes values (Default : check only entryCSN)",
 			default=False)
 
+parser.add_option(	"--exclude-attributes",
+			dest="excl_attrs",
+			action="store",
+			type='string',
+			help="Don't check this attribut (only in attribute check mode)",
+			default=None)
+
+
 (options, args) = parser.parse_args()
 
 if not options.provider or not options.consumer:
@@ -117,6 +125,11 @@ if not options.dn or not options.pwd:
 if not options.basedn:
 	print "You must provide base DN of connection to LDAP servers"
 	sys.exit(1)
+
+excl_attrs=[]
+if options.excl_attrs:
+	for ex in options.excl_attrs.split(','):
+		excl_attrs.append(ex.strip())
 
 FORMAT="%(asctime)s - %(levelname)s : %(message)s"
 
@@ -237,6 +250,8 @@ for obj in LdapObjects[options.provider]:
 				if options.attrs:
 					attrs_list=[]
 					for attr in LdapObjects[options.provider][obj]:
+						if attr in excl_attrs:
+							continue
 						if attr not in LdapObjects[srv][obj]:
 							attrs_list.append(attr)
 							logging.debug("Obj %s not synchronized : %s not present on %s" % (obj,','.join(attrs_list),srv))
