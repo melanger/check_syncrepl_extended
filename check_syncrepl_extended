@@ -324,6 +324,11 @@ for obj in LdapObjects[options.provider]:
 		else:
 			logging.debug('Obj %s : not found on %s' % (obj,srv))
 			not_found[srv].append(obj)
+			if options.touch:
+				orig_value=[]
+				if options.touch in LdapObjects[options.provider][obj]:
+					orig_value=LdapObjects[options.provider][obj][options.touch]
+				LdapServers[options.provider].touch_object(obj,options.touch,orig_value)
 
 for obj in LdapObjects[options.consumer]:
 	logging.debug('Check obj %s of consumer' % obj)
