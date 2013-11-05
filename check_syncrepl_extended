@@ -139,9 +139,6 @@ if not options.basedn:
 if options.touch and not options.attrs:
 	logging.info('Force option attrs on touch mode')
 	options.attrs=True
-elif options.touch and options.nagios:
-	logging.error('Touch mode and Nagios mode not compatible')
-	sys.exit(1)
 
 excl_attrs=[]
 if options.excl_attrs:
