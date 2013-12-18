@@ -9,8 +9,16 @@
 #    compare between two servers
 #  - by the second, all values of all atributes of all entries will
 #    be compare between two servers.
+#
 # In all case, contextCSN of servers will be compare and entries not
-# present in consumer or in provider will be notice.
+# present in consumer or in provider will be notice. You can decide to
+# disable contextCSN verification by using argument --no-check-contextCSN.
+#
+# This script is also able to "touch" LDAP object on provider to force
+# synchronisation of this object. This mechanism consist to add '%%TOUCH%%'
+# value to an attribute of this object and remove it just after. The
+# touched attribute is specify by parameter --touch. Of course, couple of
+# DN and password provided, must have write right on this attribute.
 #
 # This script could be use as Nagios plugin (-n argument)
 #
