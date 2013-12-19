@@ -20,6 +20,10 @@
 # touched attribute is specify by parameter --touch. Of course, couple of
 # DN and password provided, must have write right on this attribute.
 #
+# If your prefer, you can use --replace-touch parameter to replace value
+# of touched attribute instead of adding the touched value. Use-ful in
+# case of single-value attribute.
+#
 # This script could be use as Nagios plugin (-n argument)
 #
 # Requirement : 
@@ -132,7 +136,7 @@ parser.add_option(	"--touch",
 parser.add_option(	"--replace-touch",
 			dest="replacetouch",
 			action="store_true",
-			help="In touche mode, replace value instead of adding.",
+			help="In touch mode, replace value instead of adding.",
 			default=False)
 
 (options, args) = parser.parse_args()
