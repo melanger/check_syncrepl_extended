@@ -240,7 +240,7 @@ class LdapServer(object):
 
 	def touch_object(self,dn,attr,orig_value):
 		if options.replacetouch:
-			new_value=[new_value]
+			new_value=[TOUCH_VALUE]
 		else:
 			new_value=list(orig_value)
 			new_value.append(TOUCH_VALUE)
