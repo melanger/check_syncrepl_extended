@@ -145,10 +145,6 @@ if not options.provider or not options.consumer:
 	print "You must provide provider and customer URI"
 	sys.exit(1)
 
-if not options.dn or not options.pwd:
-	print "You must provide DN and password to connect to LDAP servers"
-	sys.exit(1)
-
 if not options.basedn:
 	print "You must provide base DN of connection to LDAP servers"
 	sys.exit(1)
@@ -194,7 +190,7 @@ class LdapServer(object):
 			try:
 				con = ldap.initialize(self.uri)
 				con.protocol_version = ldap.VERSION3
-				if self.dn != '':
+				if self.dn:
 					con.simple_bind_s(self.dn,self.pwd)
 				self.con = con
 				return True
