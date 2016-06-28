@@ -39,6 +39,7 @@ import ldap
 import ldap.modlist as modlist
 import logging
 import sys
+import getpass
 
 from optparse import OptionParser
 
@@ -68,7 +69,7 @@ parser.add_option(	"-P", "--pwd",
 			dest="pwd",
 			action="store",
 			type='string',
-			help="LDAP bind password")
+			help="LDAP bind password. Specify '-P -' to ask for a prompt.")
 
 parser.add_option(	"-b", "--basedn",
 			dest="basedn",
@@ -152,6 +153,9 @@ if not options.basedn:
 if options.touch and not options.attrs:
 	logging.info('Force option attrs on touch mode')
 	options.attrs=True
+
+if options.pwd == '-':
+	options.pwd=getpass.getpass()
 
 excl_attrs=[]
 if options.excl_attrs:
