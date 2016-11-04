@@ -59,6 +59,12 @@ parser.add_option(	"-c", "--consumer",
 			type='string',
 			help="LDAP consumer URI (example : ldaps://ldapslave.foo:636)")
 
+parser.add_option(	"-T", "--starttls",
+			dest="starttls",
+			action="store_true",
+			help="Start TLS on LDAP provider/consumers connections",
+			default=False)
+
 parser.add_option(	"-D", "--dn",
 			dest="dn",
 			action="store",
@@ -181,19 +187,23 @@ class LdapServer(object):
 	uri = ""
 	dn = ""
 	pwd = ""
+	start_tls = False
 
 	con = 0
 
-	def __init__(self,uri,dn,pwd):
-		self.uri = uri
-		self.dn   = dn
-		self.pwd  = pwd
+	def __init__(self,uri,dn,pwd, start_tls=False):
+		self.uri	= uri
+		self.dn		= dn
+		self.pwd	= pwd
+		self.start_tls	= start_tls
 
 	def connect(self):
 		if self.con == 0:
 			try:
 				con = ldap.initialize(self.uri)
 				con.protocol_version = ldap.VERSION3
+				if self.start_tls:
+					con.start_tls_s()
 				if self.dn:
 					con.simple_bind_s(self.dn,self.pwd)
 				self.con = con
@@ -265,7 +275,7 @@ LdapServersCSN={}
 
 for srv in servers:
 	logging.info('Connect to %s' % srv)
-	LdapServers[srv]=LdapServer(srv,options.dn,options.pwd)
+	LdapServers[srv]=LdapServer(srv,options.dn,options.pwd,options.starttls)
 
 	if not LdapServers[srv].connect():
 		if options.nagios:
