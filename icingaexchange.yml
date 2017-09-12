@@ -16,3 +16,12 @@ releases:
         url: "file:///check_syncrepl_extended"
         description: "First release upload on Icinga Exchange"
         checksum: cee2e8fdc243edcbab30d3b034e8b9bf
+  - 
+    name: v2017.09.12
+    description: "v2017.09.12 Release"
+    files: 
+      - 
+        name: check_syncrepl_extended
+        url: "file:///check_syncrepl_extended"
+        description: "Improve ContextCSN checking (thanks Orhan)"
+        checksum: a954ca49855c23f2f098f4696c4c0ebd
