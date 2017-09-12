@@ -59,6 +59,13 @@ parser.add_option(	"-c", "--consumer",
 			type='string',
 			help="LDAP consumer URI (example : ldaps://ldapslave.foo:636)")
 
+parser.add_option(	"-i", "--serverID",
+			dest="serverid",
+			action="store",
+			type='int',
+			help="Compare contextCSN of a specific master. Useful in MultiMaster setups where each master has a unique ID and a contextCSN for each replicated master exists. A valid serverID is a integer value from 0 to 4095 (limited to 3 hex digits, example: '12' compares the contextCSN matching '#00C#')",
+			default=False)
+
 parser.add_option(	"-T", "--starttls",
 			dest="starttls",
 			action="store_true",
@@ -160,6 +167,12 @@ if not options.basedn:
 		sys.exit(3)
 	sys.exit(1)
 
+if not 0 <= options.serverid <= 4095:
+	print "ServerID should be a integer value from 0 to 4095 (limited to 3 hexadecimal digits)."
+	if options.nagios:
+		sys.exit(3)
+	sys.exit(1)
+
 if options.touch and not options.attrs:
 	logging.info('Force option attrs on touch mode')
 	options.attrs=True
@@ -216,10 +229,24 @@ class LdapServer(object):
 				logging.error("LDAP Error : %s" % e)
 				return
 
-	def getContextCSN(self,basedn):
+	def getContextCSN(self,basedn=False,serverid=False):
+		if not basedn:
+			basedn=self.dn
 		data=self.search(basedn,'(objectclass=*)',['contextCSN'])
 		if len(data)>0:
-			return data[0][0][1]['contextCSN'][0]
+			contextCSNs=data[0][0][1]['contextCSN']
+			logging.debug('Found contextCSNs %s' % contextCSNs)
+			if serverid is False:
+				return contextCSNs[0]
+			else:
+				csnid=str(format(serverid, 'X')).zfill(3)
+				sub='#%s#' % csnid
+				CSN=[s for s in contextCSNs if sub in s]
+				if not CSN:
+					logging.error("No contextCSN matching with ServerID %s (=%s) could be found." % (serverid,sub))
+					return False
+				else:
+					return CSN[0]
 		else:
 			return False
 
@@ -289,7 +316,7 @@ for srv in servers:
 			sys.exit(1)
 
 	if not options.nocheckcontextcsn:
-		LdapServersCSN[srv]=LdapServers[srv].getContextCSN(options.basedn)
+		LdapServersCSN[srv]=LdapServers[srv].getContextCSN(options.basedn,options.serverid)
 		logging.info('ContextCSN of %s : %s' % (srv, LdapServersCSN[srv]))
 
 	logging.info('List objects from %s' % srv)
