@@ -36,9 +36,18 @@ Options:
   -c CONSUMER, --consumer=CONSUMER
                         LDAP consumer URI (example :
                         ldaps://ldapslave.foo:636)
+  -i SERVERID, --serverID=SERVERID
+                        Compare contextCSN of a specific master. Useful in
+                        MultiMaster setups where each master has a unique ID
+                        and a contextCSN for each replicated master exists. A
+                        valid serverID is a integer value from 0 to 4095
+                        (limited to 3 hex digits, example: '12' compares the
+                        contextCSN matching '#00C#')
+  -T, --starttls        Start TLS on LDAP provider/consumers connections
   -D DN, --dn=DN        LDAP bind DN (example :
                         uid=nagios,ou=sysaccounts,o=example
-  -P PWD, --pwd=PWD     LDAP bind password
+  -P PWD, --pwd=PWD     LDAP bind password. Specify '-P -' to ask for a
+                        prompt.
   -b BASEDN, --basedn=BASEDN
                         LDAP base DN (example : o=example)
   -f FILTER, --filter=FILTER
