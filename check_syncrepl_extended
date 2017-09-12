@@ -150,10 +150,14 @@ parser.add_option(	"--replace-touch",
 
 if not options.provider or not options.consumer:
 	print "You must provide provider and customer URI"
+	if options.nagios:
+		sys.exit(3)
 	sys.exit(1)
 
 if not options.basedn:
 	print "You must provide base DN of connection to LDAP servers"
+	if options.nagios:
+		sys.exit(3)
 	sys.exit(1)
 
 if options.touch and not options.attrs:
