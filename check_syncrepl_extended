@@ -398,11 +398,16 @@ if options.nagios:
 	errors=[]
 
 	if not options.nocheckcontextcsn:
-		for srv in LdapServersCSN:
-			if srv==options.provider:
-				continue
-			if LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
-				errors.append('ContextCSN of %s not the same of provider' % srv)
+		if not LdapServersCSN[options.provider]:
+			errors.append('ContextCSN of LDAP server provider could not be found')
+		else:
+			for srv in LdapServersCSN:
+				if srv==options.provider:
+					continue
+				if not LdapServersCSN[srv]:
+					errors.append('ContextCSN of %s not found' % srv)
+				elif LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
+					errors.append('ContextCSN of %s not the same of provider' % srv)
 
 	if len(not_found[options.consumer])>0:
 		errors.append("%s not found object(s) on consumer" % len(not_found[options.consumer]))
@@ -420,11 +425,19 @@ else:
 	noerror=True
 	for srv in servers:
 		if not options.nocheckcontextcsn:
-			if srv==options.provider:
-				continue
-			if LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
-				logging.warning('ContextCSN of %s not the same of provider' % srv)
+			if not LdapServersCSN[options.provider]:
+				logging.warning('ContextCSN of LDAP server provider could not be found')
 				noerror=False
+			else:
+				for srv in LdapServersCSN:
+					if srv==options.provider:
+						continue
+					if not LdapServersCSN[srv]:
+						logging.warning('ContextCSN of %s not found' % srv)
+						noerror=False
+					elif LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
+						logging.warning('ContextCSN of %s not the same of provider' % srv)
+						noerror=False
 
 		if len(not_found[srv])>0:
 			logging.warning('Not found objects on %s :\n  - %s' % (srv,'\n  - '.join(not_found[srv])))
