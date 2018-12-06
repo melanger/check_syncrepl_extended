@@ -82,7 +82,8 @@ parser.add_option(	"-P", "--pwd",
 			dest="pwd",
 			action="store",
 			type='string',
-			help="LDAP bind password. Specify '-P -' to ask for a prompt.")
+			help="LDAP bind password",
+                        default=None)
 
 parser.add_option(	"-b", "--basedn",
 			dest="basedn",
@@ -177,7 +178,7 @@ if options.touch and not options.attrs:
 	logging.info('Force option attrs on touch mode')
 	options.attrs=True
 
-if options.pwd == '-':
+if options.dn and options.pwd is None:
 	options.pwd=getpass.getpass()
 
 excl_attrs=[]
