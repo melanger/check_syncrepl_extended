@@ -36,6 +36,7 @@
 #
 
 import ldap
+from ldap.controls import SimplePagedResultsControl
 import ldap.modlist as modlist
 import logging
 import sys
@@ -83,7 +84,7 @@ parser.add_option(	"-P", "--pwd",
 			action="store",
 			type='string',
 			help="LDAP bind password",
-                        default=None)
+			default=None)
 
 parser.add_option(	"-b", "--basedn",
 			dest="basedn",
@@ -154,6 +155,13 @@ parser.add_option(	"--replace-touch",
 			help="In touch mode, replace value instead of adding.",
 			default=False)
 
+parser.add_option(	"--page-size",
+			dest="page_size",
+			action="store",
+			type='int',
+			help="Page size : if defined, paging control using LDAP v3 extended control will be enabled.",
+			default=None)
+
 (options, args) = parser.parse_args()
 
 if not options.provider or not options.consumer:
@@ -209,11 +217,12 @@ class LdapServer(object):
 
 	con = 0
 
-	def __init__(self,uri,dn,pwd, start_tls=False):
+	def __init__(self,uri,dn,pwd, start_tls=False, page_size=None):
 		self.uri	= uri
 		self.dn		= dn
 		self.pwd	= pwd
 		self.start_tls	= start_tls
+		self.page_size	= page_size
 
 	def connect(self):
 		if self.con == 0:
@@ -252,6 +261,8 @@ class LdapServer(object):
 			return False
 
 	def search(self,basedn,filter,attrs):
+		if self.page_size:
+			return self.paged_search(basedn,filter,attrs)
 		res_id = self.con.search(basedn,ldap.SCOPE_SUBTREE,filter,attrs)
 		ret = []
 		while 1:
@@ -261,6 +272,23 @@ class LdapServer(object):
 			else:
 				if res_type == ldap.RES_SEARCH_ENTRY:
 					ret.append(res_data)
+		return ret
+
+	def paged_search(self,basedn,filter,attrs):
+		ret = []
+		page = 0
+		pg_ctrl = SimplePagedResultsControl(True, self.page_size, '')
+		pg_oid = SimplePagedResultsControl.controlType
+		while page == 0 or pg_ctrl.cookie:
+			page += 1
+			logging.debug('Page search : loading page %d' % page)
+			res_id = self.con.search_ext(basedn,ldap.SCOPE_SUBTREE,filter,attrs,serverctrls=[pg_ctrl])
+			res_type, res_data, res_id, serverctrls = self.con.result3(res_id)
+			for serverctrl in serverctrls:
+				if serverctrl.controlType == pg_oid:
+					pg_ctrl.cookie = serverctrl.cookie
+			for item in res_data:
+			  ret.append([item])
 		return ret
 
 	def update_object(self,dn,old,new):
@@ -307,7 +335,7 @@ LdapServersCSN={}
 
 for srv in servers:
 	logging.info('Connect to %s' % srv)
-	LdapServers[srv]=LdapServer(srv,options.dn,options.pwd,options.starttls)
+	LdapServers[srv]=LdapServer(srv, options.dn, options.pwd, options.starttls, page_size=options.page_size)
 
 	if not LdapServers[srv].connect():
 		if options.nagios:
