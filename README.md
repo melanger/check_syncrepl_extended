@@ -46,8 +46,7 @@ Options:
   -T, --starttls        Start TLS on LDAP provider/consumers connections
   -D DN, --dn=DN        LDAP bind DN (example :
                         uid=nagios,ou=sysaccounts,o=example
-  -P PWD, --pwd=PWD     LDAP bind password. Specify '-P -' to ask for a
-                        prompt.
+  -P PWD, --pwd=PWD     LDAP bind password
   -b BASEDN, --basedn=BASEDN
                         LDAP base DN (example : o=example)
   -f FILTER, --filter=FILTER
@@ -70,6 +69,9 @@ Options:
                         user use to connect to the LDAP directory must have
                         write permission on this attribute on each object.
   --replace-touch       In touch mode, replace value instead of adding.
+  --page-size=PAGE_SIZE
+                        Page size : if defined, paging control using LDAP v3
+                        extended control will be enabled.
 ```
 
 Copyright
