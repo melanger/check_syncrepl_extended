@@ -425,11 +425,13 @@ for obj in LdapObjects[options.consumer]:
 
 if options.nagios:
 	errors=[]
+	long_output=[]
 
 	if not options.nocheckcontextcsn:
 		if not LdapServersCSN[options.provider]:
 			errors.append('ContextCSN of LDAP server provider could not be found')
 		else:
+                        long_output.append('ContextCSN on LDAP server provider = %s' % LdapServersCSN[options.provider])
 			for srv in LdapServersCSN:
 				if srv==options.provider:
 					continue
@@ -437,15 +439,25 @@ if options.nagios:
 					errors.append('ContextCSN of %s not found' % srv)
 				elif LdapServersCSN[srv]!=LdapServersCSN[options.provider]:
 					errors.append('ContextCSN of %s not the same of provider' % srv)
+					long_output.append('ContextCSN on LDAP server %s = %s' % (srv, LdapServersCSN[srv]))
 
 	if len(not_found[options.consumer])>0:
 		errors.append("%s not found object(s) on consumer" % len(not_found[options.consumer]))
+		long_output.append("Object(s) not found on server %s (consumer) :" % options.consumer)
+		for obj in not_found[options.consumer]:
+			long_output.append(" - %s" % obj)
 	if len(not_found[options.provider])>0:
 		errors.append("%s not found object(s) on provider" % len(not_found[options.provider]))
+		long_output.append("Object(s) not found on server %s (provider) :" % options.provider)
+		for obj in not_found[options.provider]:
+			long_output.append(" - %s" % obj)
 	if len(not_sync[options.consumer])>0:
 		errors.append("%s not synchronized object(s) on consumer" % len(not_sync[options.consumer]))
+		long_output.append("Object(s) not synchronized on server %s (consumer) :" % options.consumer)
+		for obj in not_sync[options.consumer]:
+			long_output.append(" - %s" % obj)
 	if len(errors)>0:
-		print "CRITICAL : "+', '.join(errors)
+		print "CRITICAL : " + ', '.join(errors) + "\n\n" + "\n".join(long_output)
 		sys.exit(2)
 	else:
 		print 'OK : consumer and provider are synchronized'
