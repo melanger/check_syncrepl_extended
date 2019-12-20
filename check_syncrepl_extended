@@ -155,6 +155,12 @@ parser.add_option(	"--replace-touch",
 			help="In touch mode, replace value instead of adding.",
 			default=False)
 
+parser.add_option(	"--remove-touch-value",
+			dest="removetouchvalue",
+			action="store_true",
+			help="In touch mode, remove touch value if present.",
+			default=False)
+
 parser.add_option(	"--page-size",
 			dest="page_size",
 			action="store",
@@ -309,19 +315,30 @@ class LdapServer(object):
 		return []
 
 	def touch_object(self,dn,attr,orig_value):
+		old = {}
+		if orig_value:
+			old[attr] = orig_value
+		new = {}
+
 		if options.replacetouch:
-			new_value=[TOUCH_VALUE]
+			if not orig_value or TOUCH_VALUE not in orig_value:
+				new[attr] = [TOUCH_VALUE]
 		else:
-			new_value=list(orig_value)
-			new_value.append(TOUCH_VALUE)
+			new[attr] = list(orig_value)
+			if orig_value or TOUCH_VALUE in orig_value:
+				new[attr].remove(TOUCH_VALUE)
+			else:
+				new[attr].append(TOUCH_VALUE)
 		try:
-			logging.info('Add value "%s" to attribute %s of object %s' % (TOUCH_VALUE,attr,dn))
-			if self.update_object(dn,{attr: orig_value}, {attr: new_value}):
-				logging.info('Remove value "%s" to attribute %s of object %s' % (TOUCH_VALUE,attr,dn))
-				self.update_object(dn,{attr: new_value}, {attr: orig_value})
+			logging.info('Touch object "%s" on attribute "%s" : %s => %s', dn, attr, old, new)
+			if self.update_object(dn, old, new):
+				logging.info('Restore original value of attribute "%s" of object "%s"', attr, dn)
+				if options.removetouchvalue and TOUCH_VALUE in old[attr]:
+					old[attr].remove(TOUCH_VALUE)
+				self.update_object(dn, new, old)
 				return True
-		except ldap.LDAPError, e:
-			logging.error('Error touching object %s : %s' % (dn,e))
+		except ldap.LDAPError:
+			logging.error('Error touching object "%s"', dn, exc_info=True)
 		return False
 
 if options.nocheckcert:
