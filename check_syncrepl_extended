@@ -31,8 +31,7 @@
 # and without restriction to retrieve objects from servers.
 #
 # Author: Benjamin Renard <brenard@easter-eggs.com>
-# Date: Mon, 10 Dec 2012 18:04:24 +0100
-# Source: http://git.zionetrix.net/check_syncrepl_extended
+# Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended
 #
 
 import argparse
@@ -49,12 +48,9 @@ import ldap.modlist as modlist
 TOUCH_VALUE = '%%TOUCH%%'
 
 parser = argparse.ArgumentParser(
-    version="""%prog version 1.1
-
-Date: Fri, 18 Dec 2020 10:48:45 +0100
-Author: Benjamin Renard <brenard@easter-eggs.com>
-Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended
-"""
+    version="%prog version 1.1",
+    description="Script to check LDAP syncrepl replication state between two servers.",
+    epilog="Author: Benjamin Renard <brenard@easter-eggs.com>, Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended"
 )
 
 parser.add_argument(
