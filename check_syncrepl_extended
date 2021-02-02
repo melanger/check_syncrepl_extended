@@ -160,6 +160,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--only-check-contextCSN",
+    dest="onlycheckcontextcsn",
+    action="store_true",
+    help="Only check servers root contextCSN (objects check disabled, default : False)",
+    default=False
+)
+
+parser.add_argument(
     "-a", "--attributes",
     dest="attrs",
     action="store_true",
@@ -211,6 +219,12 @@ parser.add_argument(
 )
 
 options = parser.parse_args()
+
+if options.nocheckcontextcsn and options.onlycheckcontextcsn:
+    parser.error("You can't use both --no-check-contextCSN and --only-check-contextCSN parameters and the same time")
+    if options.nagios:
+        sys.exit(3)
+    sys.exit(1)
 
 if not options.provider or not options.consumer:
     parser.error("You must provide provider and customer URI")
@@ -427,92 +441,94 @@ for srv in servers:
         LdapServersCSN[srv] = LdapServers[srv].getContextCSN(options.basedn, options.serverid)
         logging.info('ContextCSN of %s: %s', srv, LdapServersCSN[srv])
 
-    logging.info('List objects from %s', srv)
-    LdapObjects[srv] = {}
+    if not options.onlycheckcontextcsn:
+        logging.info('List objects from %s', srv)
+        LdapObjects[srv] = {}
+
+        if options.attrs:
+            for obj in LdapServers[srv].search(options.basedn, options.filterstr, []):
+                logging.debug('Found on %s: %s', srv, obj[0][0])
+                LdapObjects[srv][obj[0][0]] = obj[0][1]
+        else:
+            for obj in LdapServers[srv].search(options.basedn, options.filterstr, ['entryCSN']):
+                logging.debug(
+                    'Found on %s: %s / %s',
+                    srv, obj[0][0], obj[0][1]['entryCSN'][0]
+                )
+                LdapObjects[srv][obj[0][0]] = obj[0][1]['entryCSN'][0]
+
+        logging.info('%s objects founds', len(LdapObjects[srv]))
+
+
+if not options.onlycheckcontextcsn:
+    not_found = {}
+    not_sync = {}
+
+    for srv in servers:
+        not_found[srv] = []
+        not_sync[srv] = []
 
     if options.attrs:
-        for obj in LdapServers[srv].search(options.basedn, options.filterstr, []):
-            logging.debug('Found on %s: %s', srv, obj[0][0])
-            LdapObjects[srv][obj[0][0]] = obj[0][1]
+        logging.info("Check if objects a are synchronized (by comparing attributes's values)")
     else:
-        for obj in LdapServers[srv].search(options.basedn, options.filterstr, ['entryCSN']):
-            logging.debug(
-                'Found on %s: %s / %s',
-                srv, obj[0][0], obj[0][1]['entryCSN'][0]
-            )
-            LdapObjects[srv][obj[0][0]] = obj[0][1]['entryCSN'][0]
-
-    logging.info('%s objects founds', len(LdapObjects[srv]))
-
-
-not_found = {}
-not_sync = {}
-
-for srv in servers:
-    not_found[srv] = []
-    not_sync[srv] = []
-
-if options.attrs:
-    logging.info("Check if objects a are synchronized (by comparing attributes's values)")
-else:
-    logging.info('Check if objets are synchronized (by comparing entryCSN)')
-for obj in LdapObjects[options.provider]:
-    logging.debug('Check obj %s', obj)
-    for srv in LdapObjects:
-        if srv == options.provider:
-            continue
-        if obj in LdapObjects[srv]:
-            touch = False
-            if LdapObjects[options.provider][obj] != LdapObjects[srv][obj]:
-                if options.attrs:
-                    attrs_list = []
-                    for attr in LdapObjects[options.provider][obj]:
-                        if attr in excl_attrs:
-                            continue
-                        if attr not in LdapObjects[srv][obj]:
-                            attrs_list.append(attr)
-                            logging.debug(
-                                "Obj %s not synchronized: %s not present on %s",
-                                obj, ','.join(attrs_list), srv
-                            )
-                            touch = True
-                        else:
-                            LdapObjects[srv][obj][attr].sort()
-                            LdapObjects[options.provider][obj][attr].sort()
-                            if LdapObjects[srv][obj][attr] != LdapObjects[options.provider][obj][attr]:
+        logging.info('Check if objets are synchronized (by comparing entryCSN)')
+    for obj in LdapObjects[options.provider]:
+        logging.debug('Check obj %s', obj)
+        for srv in LdapObjects:
+            if srv == options.provider:
+                continue
+            if obj in LdapObjects[srv]:
+                touch = False
+                if LdapObjects[options.provider][obj] != LdapObjects[srv][obj]:
+                    if options.attrs:
+                        attrs_list = []
+                        for attr in LdapObjects[options.provider][obj]:
+                            if attr in excl_attrs:
+                                continue
+                            if attr not in LdapObjects[srv][obj]:
                                 attrs_list.append(attr)
                                 logging.debug(
-                                    "Obj %s not synchronized: %s not same value(s)",
-                                    obj, ','.join(attrs_list)
+                                    "Obj %s not synchronized: %s not present on %s",
+                                    obj, ','.join(attrs_list), srv
                                 )
                                 touch = True
-                    if attrs_list:
-                        not_sync[srv].append("%s (%s)" % (obj, ','.join(attrs_list)))
-                else:
-                    logging.debug(
-                        "Obj %s not synchronized: %s <-> %s",
-                        obj, LdapObjects[options.provider][obj], LdapObjects[srv][obj]
-                    )
-                    not_sync[srv].append(obj)
-            if touch and options.touch:
-                orig_value = []
-                if options.touch in LdapObjects[options.provider][obj]:
-                    orig_value = LdapObjects[options.provider][obj][options.touch]
-                LdapServers[options.provider].touch_object(obj, options.touch, orig_value)
-        else:
-            logging.debug('Obj %s: not found on %s', obj, srv)
-            not_found[srv].append(obj)
-            if options.touch:
-                orig_value = []
-                if options.touch in LdapObjects[options.provider][obj]:
-                    orig_value = LdapObjects[options.provider][obj][options.touch]
-                LdapServers[options.provider].touch_object(obj, options.touch, orig_value)
+                            else:
+                                LdapObjects[srv][obj][attr].sort()
+                                LdapObjects[options.provider][obj][attr].sort()
+                                if LdapObjects[srv][obj][attr] != LdapObjects[options.provider][obj][attr]:
+                                    attrs_list.append(attr)
+                                    logging.debug(
+                                        "Obj %s not synchronized: %s not same value(s)",
+                                        obj, ','.join(attrs_list)
+                                    )
+                                    touch = True
+                        if attrs_list:
+                            not_sync[srv].append("%s (%s)" % (obj, ','.join(attrs_list)))
+                    else:
+                        logging.debug(
+                            "Obj %s not synchronized: %s <-> %s",
+                            obj, LdapObjects[options.provider][obj], LdapObjects[srv][obj]
+                        )
+                        not_sync[srv].append(obj)
+                if touch and options.touch:
+                    orig_value = []
+                    if options.touch in LdapObjects[options.provider][obj]:
+                        orig_value = LdapObjects[options.provider][obj][options.touch]
+                    LdapServers[options.provider].touch_object(obj, options.touch, orig_value)
+            else:
+                logging.debug('Obj %s: not found on %s', obj, srv)
+                not_found[srv].append(obj)
+                if options.touch:
+                    orig_value = []
+                    if options.touch in LdapObjects[options.provider][obj]:
+                        orig_value = LdapObjects[options.provider][obj][options.touch]
+                    LdapServers[options.provider].touch_object(obj, options.touch, orig_value)
 
-for obj in LdapObjects[options.consumer]:
-    logging.debug('Check obj %s of consumer', obj)
-    if obj not in LdapObjects[options.provider]:
-        logging.debug('Obj %s: not found on provider', obj)
-        not_found[options.provider].append(obj)
+    for obj in LdapObjects[options.consumer]:
+        logging.debug('Check obj %s of consumer', obj)
+        if obj not in LdapObjects[options.provider]:
+            logging.debug('Obj %s: not found on provider', obj)
+            not_found[options.provider].append(obj)
 
 if options.nagios:
     errors = []
@@ -532,21 +548,22 @@ if options.nagios:
                     errors.append('ContextCSN of %s not the same of provider' % srv)
                     long_output.append('ContextCSN on LDAP server %s = %s' % (srv, LdapServersCSN[srv]))
 
-    if not_found[options.consumer]:
-        errors.append("%s not found object(s) on consumer" % len(not_found[options.consumer]))
-        long_output.append("Object(s) not found on server %s (consumer) :" % options.consumer)
-        for obj in not_found[options.consumer]:
-            long_output.append(" - %s" % obj)
-    if not_found[options.provider]:
-        errors.append("%s not found object(s) on provider" % len(not_found[options.provider]))
-        long_output.append("Object(s) not found on server %s (provider) :" % options.provider)
-        for obj in not_found[options.provider]:
-            long_output.append(" - %s" % obj)
-    if not_sync[options.consumer]:
-        errors.append("%s not synchronized object(s) on consumer" % len(not_sync[options.consumer]))
-        long_output.append("Object(s) not synchronized on server %s (consumer) :" % options.consumer)
-        for obj in not_sync[options.consumer]:
-            long_output.append(" - %s" % obj)
+    if not options.onlycheckcontextcsn:
+        if not_found[options.consumer]:
+            errors.append("%s not found object(s) on consumer" % len(not_found[options.consumer]))
+            long_output.append("Object(s) not found on server %s (consumer) :" % options.consumer)
+            for obj in not_found[options.consumer]:
+                long_output.append(" - %s" % obj)
+        if not_found[options.provider]:
+            errors.append("%s not found object(s) on provider" % len(not_found[options.provider]))
+            long_output.append("Object(s) not found on server %s (provider) :" % options.provider)
+            for obj in not_found[options.provider]:
+                long_output.append(" - %s" % obj)
+        if not_sync[options.consumer]:
+            errors.append("%s not synchronized object(s) on consumer" % len(not_sync[options.consumer]))
+            long_output.append("Object(s) not synchronized on server %s (consumer) :" % options.consumer)
+            for obj in not_sync[options.consumer]:
+                long_output.append(" - %s" % obj)
     if errors:
         print("CRITICAL: " + ', '.join(errors) + "\n\n" + "\n".join(long_output))  # pylint: disable=print-statement
         sys.exit(2)
@@ -571,18 +588,19 @@ else:
                         logging.warning('ContextCSN of %s not the same of provider', srv)
                         noerror = False
 
-        if not_found[srv]:
-            logging.warning(
-                'Not found objects on %s :\n  - %s',
-                srv, '\n  - '.join(not_found[srv])
-            )
-            noerror = False
-        if not_sync[srv]:
-            logging.warning(
-                'Not sync objects on %s: %s',
-                srv, '\n  - '.join(not_sync[srv])
-            )
-            noerror = False
+        if not options.onlycheckcontextcsn:
+            if not_found[srv]:
+                logging.warning(
+                    'Not found objects on %s :\n  - %s',
+                    srv, '\n  - '.join(not_found[srv])
+                )
+                noerror = False
+            if not_sync[srv]:
+                logging.warning(
+                    'Not sync objects on %s: %s',
+                    srv, '\n  - '.join(not_sync[srv])
+                )
+                noerror = False
 
     if noerror:
         logging.info('No sync problem detected')
