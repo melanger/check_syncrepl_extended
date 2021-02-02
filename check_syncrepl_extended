@@ -48,7 +48,6 @@ import ldap.modlist as modlist
 TOUCH_VALUE = '%%TOUCH%%'
 
 parser = argparse.ArgumentParser(
-    version="%prog version 1.1",
     description="Script to check LDAP syncrepl replication state between two servers.",
     epilog="Author: Benjamin Renard <brenard@easter-eggs.com>, Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended"
 )
@@ -214,19 +213,19 @@ parser.add_argument(
 options = parser.parse_args()
 
 if not options.provider or not options.consumer:
-    print "You must provide provider and customer URI"
+    parser.error("You must provide provider and customer URI")
     if options.nagios:
         sys.exit(3)
     sys.exit(1)
 
 if not options.basedn:
-    print "You must provide base DN of connection to LDAP servers"
+    parser.error("You must provide base DN of connection to LDAP servers")
     if options.nagios:
         sys.exit(3)
     sys.exit(1)
 
 if not 0 <= options.serverid <= 4095:
-    print "ServerID should be a integer value from 0 to 4095 (limited to 3 hexadecimal digits)."
+    parser.error("ServerID should be a integer value from 0 to 4095 (limited to 3 hexadecimal digits).")
     if options.nagios:
         sys.exit(3)
     sys.exit(1)
@@ -419,7 +418,7 @@ for srv in servers:
 
     if not LdapServers[srv].connect():
         if options.nagios:
-            print "UNKWNON - Failed to connect to %s" % srv
+            print("UNKWNON - Failed to connect to %s" % srv)  # pylint: disable=print-statement
             sys.exit(3)
         else:
             sys.exit(1)
@@ -549,10 +548,10 @@ if options.nagios:
         for obj in not_sync[options.consumer]:
             long_output.append(" - %s" % obj)
     if errors:
-        print "CRITICAL: " + ', '.join(errors) + "\n\n" + "\n".join(long_output)
+        print("CRITICAL: " + ', '.join(errors) + "\n\n" + "\n".join(long_output))  # pylint: disable=print-statement
         sys.exit(2)
     else:
-        print 'OK: consumer and provider are synchronized'
+        print('OK: consumer and provider are synchronized')  # pylint: disable=print-statement
         sys.exit(0)
 else:
     noerror = True
