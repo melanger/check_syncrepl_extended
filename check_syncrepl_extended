@@ -291,7 +291,7 @@ class LdapServer(object):
     def getContextCSN(self, basedn=False, serverid=False):
         if not basedn:
             basedn = self.dn
-        data = self.search(basedn, '(objectclass=*)', ['contextCSN'])
+        data = self.search(basedn, '(objectclass=*)', attrs=['contextCSN'], scope='base')
         if data:
             contextCSNs = data[0][0][1]['contextCSN']
             logging.debug('Found contextCSNs %s', contextCSNs)
@@ -309,10 +309,23 @@ class LdapServer(object):
             return CSN[0]
         return False
 
-    def search(self, basedn, filterstr, attrs):
+    @staticmethod
+    def get_scope(scope):
+        if scope == 'base':
+            return ldap.SCOPE_BASE  # pylint: disable=no-member
+        elif scope == 'one':
+            return ldap.SCOPE_ONELEVEL  # pylint: disable=no-member
+        elif scope == 'sub':
+            return ldap.SCOPE_SUBTREE  # pylint: disable=no-member
+        raise Exception("Unknown LDAP scope '%s'" % scope)
+
+    def search(self, basedn, filterstr, attrs=None, scope=None):
         if self.page_size:
-            return self.paged_search(basedn, filterstr, attrs)
-        res_id = self.con.search(basedn, ldap.SCOPE_SUBTREE, filterstr, attrs)  # pylint: disable=no-member
+            return self.paged_search(basedn, filterstr, attrs=attrs, scope=scope)
+        res_id = self.con.search(
+            basedn, self.get_scope(scope if scope else 'sub'),
+            filterstr, attrs if attrs else []
+        )
         ret = []
         while 1:
             res_type, res_data = self.con.result(res_id, 0)
@@ -323,7 +336,7 @@ class LdapServer(object):
                     ret.append(res_data)
         return ret
 
-    def paged_search(self, basedn, filterstr, attrs):
+    def paged_search(self, basedn, filterstr, attrs=None, scope=None):
         ret = []
         page = 0
         pg_ctrl = SimplePagedResultsControl(True, self.page_size, '')
@@ -331,9 +344,8 @@ class LdapServer(object):
             page += 1
             logging.debug('Page search: loading page %d', page)
             res_id = self.con.search_ext(
-                basedn, ldap.SCOPE_SUBTREE,  # pylint: disable=no-member
-                filterstr, attrs,
-                serverctrls=[pg_ctrl]
+                basedn, self.get_scope(scope if scope else 'sub'),
+                filterstr, attrs if attrs else [], serverctrls=[pg_ctrl]
             )
             res_type, res_data, res_id, serverctrls = self.con.result3(res_id)  # pylint: disable=unused-variable
             for serverctrl in serverctrls:
