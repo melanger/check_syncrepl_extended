@@ -261,8 +261,6 @@ FORMAT = "%(asctime)s - %(levelname)s: %(message)s"
 if options.debug:
     logging.basicConfig(level=logging.DEBUG, format=FORMAT)
     ldap.set_option(ldap.OPT_DEBUG_LEVEL, 0)  # pylint: disable=no-member
-    ldapmodule_trace_level = 1
-    ldapmodule_trace_file = sys.stderr
 elif options.nagios:
     logging.basicConfig(level=logging.ERROR, format=FORMAT)
 elif options.quiet:
