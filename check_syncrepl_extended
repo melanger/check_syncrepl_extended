@@ -48,8 +48,10 @@ import ldap.modlist as modlist
 TOUCH_VALUE = '%%TOUCH%%'
 
 parser = argparse.ArgumentParser(
-    description="Script to check LDAP syncrepl replication state between two servers.",
-    epilog="Author: Benjamin Renard <brenard@easter-eggs.com>, Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended"
+    description=("Script to check LDAP syncrepl replication state between "+
+                 "two servers."),
+    epilog=("Author: Benjamin Renard <brenard@easter-eggs.com>, "+
+            "Source: https://gogs.zionetrix.net/bn8/check_syncrepl_extended")
 )
 
 parser.add_argument(
@@ -73,7 +75,11 @@ parser.add_argument(
     dest="serverid",
     action="store",
     type=int,
-    help="Compare contextCSN of a specific master. Useful in MultiMaster setups where each master has a unique ID and a contextCSN for each replicated master exists. A valid serverID is a integer value from 0 to 4095 (limited to 3 hex digits, example: '12' compares the contextCSN matching '#00C#')",
+    help=("Compare contextCSN of a specific master. Useful in MultiMaster "+
+          "setups where each master has a unique ID and a contextCSN for "+
+          "each replicated master exists. A valid serverID is a integer "+
+          "value from 0 to 4095 (limited to 3 hex digits, example: '12' "+
+          "compares the contextCSN matching '#00C#')"),
     default=False
 )
 
@@ -163,7 +169,8 @@ parser.add_argument(
     "--only-check-contextCSN",
     dest="onlycheckcontextcsn",
     action="store_true",
-    help="Only check servers root contextCSN (objects check disabled, default : False)",
+    help=("Only check servers root contextCSN (objects check disabled, "+
+          "default : False)"),
     default=False
 )
 
@@ -189,7 +196,11 @@ parser.add_argument(
     dest="touch",
     action="store",
     type=str,
-    help="Touch attribute giving in parameter to force resync a this LDAP object from provider. A value '%s' will be add to this attribute and remove after. The user use to connect to the LDAP directory must have write permission on this attribute on each object." % TOUCH_VALUE,
+    help=("Touch attribute giving in parameter to force resync a this LDAP "+
+        "object from provider. A value '{}' will be add to this attribute "+
+        "and remove after. The user use to connect to the LDAP directory "+
+        "must have write permission on this attribute on each object."
+        ).format(TOUCH_VALUE),
     default=None
 )
 
@@ -214,14 +225,16 @@ parser.add_argument(
     dest="page_size",
     action="store",
     type=int,
-    help="Page size: if defined, paging control using LDAP v3 extended control will be enabled.",
+    help=("Page size: if defined, paging control using LDAP v3 extended " +
+          "control will be enabled."),
     default=None
 )
 
 options = parser.parse_args()
 
 if options.nocheckcontextcsn and options.onlycheckcontextcsn:
-    parser.error("You can't use both --no-check-contextCSN and --only-check-contextCSN parameters and the same time")
+    parser.error("You can't use both --no-check-contextCSN and "+
+                 "--only-check-contextCSN parameters and the same time")
     if options.nagios:
         sys.exit(3)
     sys.exit(1)
@@ -239,7 +252,8 @@ if not options.basedn:
     sys.exit(1)
 
 if not 0 <= options.serverid <= 4095:
-    parser.error("ServerID should be a integer value from 0 to 4095 (limited to 3 hexadecimal digits).")
+    parser.error("ServerID should be a integer value from 0 to 4095 "+
+                 "(limited to 3 hexadecimal digits).")
     if options.nagios:
         sys.exit(3)
     sys.exit(1)
@@ -425,7 +439,9 @@ LdapServersCSN = {}
 
 for srv in servers:
     logging.info('Connect to %s', srv)
-    LdapServers[srv] = LdapServer(srv, options.dn, options.pwd, options.starttls, page_size=options.page_size)
+    LdapServers[srv] = LdapServer(srv, options.dn, options.pwd,
+                                  options.starttls,
+                                  page_size=options.page_size)
 
     if not LdapServers[srv].connect():
         if options.nagios:
