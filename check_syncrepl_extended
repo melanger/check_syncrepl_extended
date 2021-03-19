@@ -323,7 +323,7 @@ class LdapServer(object):
             if serverid is False:
                 return contextCSNs[0]
             csnid = str(format(serverid, 'X')).zfill(3)
-            sub = '#%s#' % csnid
+            sub = str.encode('#%s#' % csnid, encoding="ascii", errors="replace")
             CSN = [s for s in contextCSNs if sub in s]
             if not CSN:
                 logging.error(
