@@ -1,6 +1,4 @@
-Script to check LDAP syncrepl replication state between two servers
-===================================================================
-
+# Script to check LDAP syncrepl replication state between two servers
 This script check LDAP syncrepl replication state between two servers.
 One server is consider as provider and the other as consumer.
 
@@ -17,13 +15,37 @@ If your prefer, you can use *--replace-touch* parameter to replace value of touc
 
 To use this script as an Icinga (or Nagios) plugin, use *-n* argument
 
-Requirement
------------
+## Requirement
 
 A single couple of DN and password able to connect to both server and without restriction to retrieve objects from servers.
 
-Usage
------
+## Dependencies
+
+* python 3 (for python 2.7 compatibility, see python2.7 branch)
+* python-ldap
+
+## Installation
+
+### If you plan to use it with NRPE
+```
+apt install python3-ldap git
+git clone https://gogs.zionetrix.net/bn8/check_syncrepl_extended.git /usr/local/src/check_syncrepl_extended
+mkdir -p /usr/local/lib/nagios/plugins
+ln -s /usr/local/src/check_syncrepl_extended/check_syncrepl_extended /usr/local/lib/nagios/plugins/
+cat << EOF > /etc/nagios/nrpe.d/ldap-syncrepl.cfg
+command[check_syncrepl_extended]=/usr/local/lib/nagios/plugins/check_syncrepl_extended --nagios --attributes --provider ldaps://ldapmaster.foo --consumer ldaps://ldapslave.foo -D uid=nagios,ou=sysaccounts,o=example -P secret
+EOF
+service nagios-nrpe-server reload
+```
+
+### Otherwise
+```
+apt install python3-ldap git
+git clone https://gogs.zionetrix.net/bn8/check_syncrepl_extended.git /usr/local/src/check_syncrepl_extended
+ln -s /usr/local/src/check_syncrepl_extended/check_syncrepl_extended /usr/local/bin/
+```
+
+## Usage
 ```
 usage: check_syncrepl_extended [-h] [-v] [-p PROVIDER] [-c CONSUMER]
                                [-i SERVERID] [-T] [-D DN] [-P PWD] [-b BASEDN]
@@ -85,13 +107,11 @@ Author: Benjamin Renard <brenard@easter-eggs.com>, Source:
 https://gogs.zionetrix.net/bn8/check_syncrepl_extended
 ```
 
-Copyright
----------
+## Copyright
 
 Copyright (c) 2017 Benjamin Renard
 
-License
--------
+## License
 
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 3 as published by the Free Software Foundation.
 
