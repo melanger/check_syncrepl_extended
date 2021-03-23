@@ -326,9 +326,9 @@ class LdapServer(object):
     def get_scope(scope):
         if scope == 'base':
             return ldap.SCOPE_BASE  # pylint: disable=no-member
-        elif scope == 'one':
+        if scope == 'one':
             return ldap.SCOPE_ONELEVEL  # pylint: disable=no-member
-        elif scope == 'sub':
+        if scope == 'sub':
             return ldap.SCOPE_SUBTREE  # pylint: disable=no-member
         raise Exception("Unknown LDAP scope '%s'" % scope)
 
@@ -344,9 +344,8 @@ class LdapServer(object):
             res_type, res_data = self.con.result(res_id, 0)
             if res_data == []:
                 break
-            else:
-                if res_type == ldap.RES_SEARCH_ENTRY:  # pylint: disable=no-member
-                    ret.append(res_data)
+            if res_type == ldap.RES_SEARCH_ENTRY:  # pylint: disable=no-member
+                ret.append(res_data)
         return ret
 
     def paged_search(self, basedn, filterstr, attrs=None, scope=None):
@@ -411,7 +410,7 @@ class LdapServer(object):
                 logging.info('Restore original value of attribute "%s" of object "%s"', attr, dn)
                 if options.removetouchvalue and TOUCH_VALUE in old[attr]:
                     old[attr].remove(TOUCH_VALUE)
-                self.update_object(dn, new, old)
+                self.update_object(dn=dn, old=new, new=old)
                 return True
         except LDAPError:
             logging.error('Error touching object "%s"', dn, exc_info=True)
