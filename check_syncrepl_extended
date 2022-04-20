@@ -37,9 +37,9 @@
 import argparse
 import logging
 import sys
-
+import datetime
 import getpass
-
+import time
 import ldap
 from ldap import LDAPError  # pylint: disable=no-name-in-module
 from ldap.controls import SimplePagedResultsControl
@@ -258,6 +258,26 @@ parser.add_argument(
         + "control will be enabled."
     ),
     default=None,
+)
+
+parser.add_argument(
+    "-W",
+    "--warning",
+    dest="warning",
+    action="store",
+    type=int,
+    help=("Exit with WARNING status if difference is greater than INTEGER seconds."),
+    default=None,
+)
+
+parser.add_argument(
+    "-C",
+    "--critical",
+    dest="critical",
+    action="store",
+    type=int,
+    help=("Exit with CRITICAL status if difference is greater than INTEGER seconds."),
+    default=0,
 )
 
 options = parser.parse_args()
@@ -629,6 +649,7 @@ if not options.onlycheckcontextcsn:
 
 if options.nagios:
     errors = []
+    warnings = []
     long_output = []
 
     if not options.nocheckcontextcsn:
@@ -645,10 +666,35 @@ if options.nagios:
                 if not LdapServersCSN[srv]:
                     errors.append("ContextCSN of %s not found" % srv)
                 elif LdapServersCSN[srv] != LdapServersCSN[options.provider]:
-                    errors.append("ContextCSN of %s not the same of provider" % srv)
                     long_output.append(
                         "ContextCSN on LDAP server %s = %s" % (srv, LdapServersCSN[srv])
                     )
+                    if options.critical == 0:
+                        errors.append("ContextCSN of %s not the same of provider" % srv)
+                    else:
+                        diff = (
+                            datetime.datetime.strptime(
+                                LdapServersCSN[options.provider][:14].decode("utf-8"),
+                                "%Y%m%d%H%M%S",
+                            )
+                            - datetime.datetime.strptime(
+                                LdapServersCSN[srv][:14].decode("utf-8"), "%Y%m%d%H%M%S"
+                            )
+                        ).total_seconds()
+                        long_output.append(
+                            "ContextCSN of %s is %d seconds behind provider"
+                            % (srv, diff)
+                        )
+                        if diff > options.critical:
+                            errors.append(
+                                "ContextCSN of %s is more than %d seconds behind provider"
+                                % (srv, options.critical)
+                            )
+                        elif options.warning and diff > options.warning:
+                            warnings.append(
+                                "ContextCSN of %s is more than %d seconds behind provider"
+                                % (srv, options.warning)
+                            )
 
     if not options.onlycheckcontextcsn:
         if not_found[options.consumer]:
@@ -685,9 +731,16 @@ if options.nagios:
             "CRITICAL: " + ", ".join(errors) + "\n\n" + "\n".join(long_output)
         )  # pylint: disable=print-statement
         sys.exit(2)
+    elif warnings:
+        print(
+            "WARNING: " + ", ".join(warnings) + "\n\n" + "\n".join(long_output)
+        )  # pylint: disable=print-statement
+        sys.exit(1)
     else:
         print(
             "OK: consumer and provider are synchronized"
+            + "\n\n"
+            + "\n".join(long_output)
         )  # pylint: disable=print-statement
         sys.exit(0)
 else:
