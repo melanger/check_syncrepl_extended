@@ -27,7 +27,7 @@
 # This script could be use as Nagios plugin (-n argument)
 #
 # Requirement:
-# A single couple of DN and password able to connect to both server
+# One or two couples of DN and password able to connect to both server
 # and without restriction to retrieve objects from servers.
 #
 # Author: Benjamin Renard <brenard@easter-eggs.com>
@@ -106,7 +106,7 @@ parser.add_argument(
     dest="dn",
     action="store",
     type=str,
-    help="LDAP bind DN (example: uid=nagios,ou=sysaccounts,o=example",
+    help="LDAP bind DN (example: uid=nagios,ou=sysaccounts,o=example)",
 )
 
 parser.add_argument(
@@ -117,6 +117,24 @@ parser.add_argument(
     type=str,
     help="LDAP bind password",
     default=None,
+)
+
+parser.add_argument(
+    "--dn2",
+    dest="dn2",
+    action="store",
+    type=str,
+    help="LDAP bind DN for provider (if it differs from consumer)",
+    default=None,
+)
+
+parser.add_argument(
+    "--pwd2",
+    dest="pwd2",
+    action="store",
+    type=str,
+    help="LDAP bind password for provider (if it differs from consumer)",
+    default="",
 )
 
 parser.add_argument(
@@ -281,6 +299,11 @@ if options.touch and not options.attrs:
 if options.dn and options.pwd is None:
     options.pwd = getpass.getpass()
 
+if options.dn and options.pwd2 is None:
+    options.pwd2 = getpass.getpass()
+elif options.dn and options.pwd and options.pwd2 == "":
+    options.pwd2 = options.pwd
+
 excl_attrs = []
 if options.excl_attrs:
     for ex in options.excl_attrs.split(","):
@@ -305,15 +328,21 @@ class LdapServer(object):
     dn = ""
     pwd = ""
     start_tls = False
+    dn2 = ""
+    pwd2 = ""
 
     con = 0
 
-    def __init__(self, uri, dn, pwd, start_tls=False, page_size=None):
+    def __init__(
+        self, uri, dn, pwd, start_tls=False, page_size=None, dn2=None, pwd2=None
+    ):
         self.uri = uri
         self.dn = dn
         self.pwd = pwd
         self.start_tls = start_tls
         self.page_size = page_size
+        self.dn2 = dn2
+        self.pwd2 = pwd2
 
     def connect(self):
         if self.con == 0:
@@ -462,16 +491,19 @@ if options.nocheckcert:
         ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER
     )  # pylint: disable=no-member
 
-servers = [options.provider, options.consumer]
+servers = [
+    (options.provider, options.dn, options.pwd),
+    (options.consumer, options.dn2 or options.dn, options.pwd2 or options.pwd),
+]
 
 LdapServers = {}
 LdapObjects = {}
 LdapServersCSN = {}
 
-for srv in servers:
+for (srv, dn, pwd) in servers:
     logging.info("Connect to %s", srv)
     LdapServers[srv] = LdapServer(
-        srv, options.dn, options.pwd, options.starttls, page_size=options.page_size
+        srv, dn, pwd, options.starttls, page_size=options.page_size
     )
 
     if not LdapServers[srv].connect():

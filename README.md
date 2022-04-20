@@ -53,7 +53,8 @@ ln -s /usr/local/src/check_syncrepl_extended/check_syncrepl_extended /usr/local/
 
 ```
 usage: check_syncrepl_extended [-h] [-v] [-p PROVIDER] [-c CONSUMER]
-                               [-i SERVERID] [-T] [-D DN] [-P PWD] [-b BASEDN]
+                               [-i SERVERID] [-T] [-D DN] [-P PWD]
+                               [--dn2 DN2] [--pwd2 PWD2] [-b BASEDN]
                                [-f FILTERSTR] [-d] [-n] [-q]
                                [--no-check-certificate]
                                [--no-check-contextCSN] [-a]
@@ -82,6 +83,8 @@ optional arguments:
   -D DN, --dn DN        LDAP bind DN (example:
                         uid=nagios,ou=sysaccounts,o=example
   -P PWD, --pwd PWD     LDAP bind password
+  --dn2 DN2             LDAP bind DN for provider (if it differs from consumer)
+  --pwd2 PWD2           LDAP bind password for provider (if it differs from consumer)
   -b BASEDN, --basedn BASEDN
                         LDAP base DN (example: o=example)
   -f FILTERSTR, --filter FILTERSTR
